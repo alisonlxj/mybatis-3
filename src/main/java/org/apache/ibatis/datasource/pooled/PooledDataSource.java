@@ -40,8 +40,10 @@ public class PooledDataSource implements DataSource {
 
   private static final Log log = LogFactory.getLog(PooledDataSource.class);
 
+  // lxj: 普通POJO，用于记录 池的状态
   private final PoolState state = new PoolState(this);
 
+  // lxj: 内部本质是 UnpooledDataSource
   private final UnpooledDataSource dataSource;
 
   // OPTIONAL CONFIGURATION FIELDS
@@ -411,6 +413,9 @@ public class PooledDataSource implements DataSource {
     }
   }
 
+
+
+  // lxj: 从池中取出一个Connection对象
   private PooledConnection popConnection(String username, String password) throws SQLException {
     boolean countedWait = false;
     PooledConnection conn = null;
