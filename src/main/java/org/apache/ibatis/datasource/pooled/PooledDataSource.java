@@ -40,7 +40,7 @@ public class PooledDataSource implements DataSource {
 
   private static final Log log = LogFactory.getLog(PooledDataSource.class);
 
-  // lxj: 普通POJO，用于记录 池的状态
+  // lxj: 普通POJO，用于记录 池的状态（包含了 活跃PooledConnection列表 和 空闲PooledConnection列表）
   private final PoolState state = new PoolState(this);
 
   // lxj: 内部本质是 UnpooledDataSource
@@ -374,6 +374,12 @@ public class PooledDataSource implements DataSource {
     return ("" + url + username + password).hashCode();
   }
 
+
+  /**
+   * lxj: 将使用完的 PooledConnection 对象返回 连接池
+   * @param conn
+   * @throws SQLException
+   */
   protected void pushConnection(PooledConnection conn) throws SQLException {
 
     synchronized (state) {
@@ -415,7 +421,13 @@ public class PooledDataSource implements DataSource {
 
 
 
-  // lxj: 从池中取出一个Connection对象
+  /**
+   * lxj: 从池中取出一个 PooledConnection 对象
+   * @param username
+   * @param password
+   * @return
+   * @throws SQLException
+   */
   private PooledConnection popConnection(String username, String password) throws SQLException {
     boolean countedWait = false;
     PooledConnection conn = null;
