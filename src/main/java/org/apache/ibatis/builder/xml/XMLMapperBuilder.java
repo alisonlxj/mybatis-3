@@ -56,7 +56,12 @@ import org.apache.ibatis.type.TypeHandler;
 public class XMLMapperBuilder extends BaseBuilder {
 
   private final XPathParser parser;
+
   private final MapperBuilderAssistant builderAssistant;
+  /**
+   * key: sql片段 <namespace.id>
+   * value: sql片段XNode节点对象
+   */
   private final Map<String, XNode> sqlFragments;
   private final String resource;
 
@@ -90,13 +95,21 @@ public class XMLMapperBuilder extends BaseBuilder {
     this.resource = resource;
   }
 
+
+  /**
+   * 核心方法: 解析xml文件节点信息，填充configuration对象
+   */
   public void parse() {
+    // 若还没加载当前xml资源，则加载
     if (!configuration.isResourceLoaded(resource)) {
+      // 解析xml 填充 MapperStatement、Cache、ResultMap等
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);
+      // 将 xml的namespace与 mapper接口文件类 绑定
       bindMapperForNamespace();
     }
 
+    // 对 未处理完的数据 再兜底处理下
     parsePendingResultMaps();
     parsePendingCacheRefs();
     parsePendingStatements();
@@ -106,6 +119,11 @@ public class XMLMapperBuilder extends BaseBuilder {
     return sqlFragments.get(refid);
   }
 
+
+  /**
+   * 解析 mapper.xml文件 并
+   * @param context
+   */
   private void configurationElement(XNode context) {
     try {
       String namespace = context.getStringAttribute("namespace");
@@ -113,12 +131,22 @@ public class XMLMapperBuilder extends BaseBuilder {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
       builderAssistant.setCurrentNamespace(namespace);
-      cacheRefElement(context.evalNode("cache-ref"));
-      cacheElement(context.evalNode("cache"));
+
+      // 缓存信息 设置到Configuration的 cacheRefMap中
+      cacheRefElement(context.evalNode("cache-ref")); // cache-ref 节点
+      cacheElement(context.evalNode("cache"));  // cache节点 -> cache模块: 通过CacheBuilder新建 Cache
+
+      // 解析 parameterMap配置，填充到Configuration对象的 Map<String, ParameterMap> parameterMaps 中
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+
+      // 解析 ResultMap 填充 Configuration对象的 Map<String, ResultMap> resultMaps
       resultMapElements(context.evalNodes("/mapper/resultMap"));
+      // <sql>片段
       sqlElement(context.evalNodes("/mapper/sql"));
+
+      // 解析 增删改查语句 -> 封装为 MappedStatement对象 并 存储至 Configuration中 Map<String, MappedStatement> mappedStatements
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
+
     } catch (Exception e) {
       throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
     }
@@ -265,6 +293,8 @@ public class XMLMapperBuilder extends BaseBuilder {
       typeClass = inheritEnclosingType(resultMapNode, enclosingType);
     }
     Discriminator discriminator = null;
+
+    // 收集 ResultMapping
     List<ResultMapping> resultMappings = new ArrayList<>(additionalResultMappings);
     List<XNode> resultChildren = resultMapNode.getChildren();
     for (XNode resultChild : resultChildren) {
@@ -284,6 +314,8 @@ public class XMLMapperBuilder extends BaseBuilder {
             resultMapNode.getValueBasedIdentifier());
     String extend = resultMapNode.getStringAttribute("extends");
     Boolean autoMapping = resultMapNode.getBooleanAttribute("autoMapping");
+
+    // 借助 builderAssistant 填充 resultMappings
     ResultMapResolver resultMapResolver = new ResultMapResolver(builderAssistant, id, typeClass, extend, discriminator, resultMappings, autoMapping);
     try {
       return resultMapResolver.resolve();
@@ -342,10 +374,16 @@ public class XMLMapperBuilder extends BaseBuilder {
     sqlElement(list, null);
   }
 
+  /**
+   * 解析xml文件中的 <sql>标签 -> 填充到 sqlFragments 中
+   * @param list
+   * @param requiredDatabaseId
+   */
   private void sqlElement(List<XNode> list, String requiredDatabaseId) {
     for (XNode context : list) {
       String databaseId = context.getStringAttribute("databaseId");
       String id = context.getStringAttribute("id");
+      // 加入 namespace. 的前缀
       id = builderAssistant.applyCurrentNamespace(id, false);
       if (databaseIdMatchesCurrent(id, databaseId, requiredDatabaseId)) {
         sqlFragments.put(id, context);
