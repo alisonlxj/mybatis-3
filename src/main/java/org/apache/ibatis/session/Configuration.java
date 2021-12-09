@@ -100,6 +100,7 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  */
 public class Configuration {
 
+  // 环境数据源相关信息封装 -> xml文件中解析获取
   protected Environment environment;
 
   protected boolean safeRowBoundsEnabled;
@@ -116,6 +117,8 @@ public class Configuration {
   protected boolean shrinkWhitespacesInSql;
 
   protected String logPrefix;
+
+  // 真实的日志实现
   protected Class<? extends Log> logImpl;
   protected Class<? extends VFS> vfsImpl;
   protected Class<?> defaultSqlProviderType;
@@ -125,6 +128,7 @@ public class Configuration {
   protected Integer defaultStatementTimeout;
   protected Integer defaultFetchSize;
   protected ResultSetType defaultResultSetType;
+  // 默认 SimpleExecutor
   protected ExecutorType defaultExecutorType = ExecutorType.SIMPLE;
   protected AutoMappingBehavior autoMappingBehavior = AutoMappingBehavior.PARTIAL;
   protected AutoMappingUnknownColumnBehavior autoMappingUnknownColumnBehavior = AutoMappingUnknownColumnBehavior.NONE;
@@ -146,10 +150,19 @@ public class Configuration {
    */
   protected Class<?> configurationFactory;
 
+  // mapper注册器: Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap<>() 记录维护mapper接口类型与 其工厂的映射关系
   protected final MapperRegistry mapperRegistry = new MapperRegistry(this);
+
+  // 拦截器链: List<Interceptor> interceptors 自定义插件收集维护
   protected final InterceptorChain interceptorChain = new InterceptorChain();
+
+  // jdbc与javatype 映射关系注册器
   protected final TypeHandlerRegistry typeHandlerRegistry = new TypeHandlerRegistry(this);
+
+  // 类型别名注册器 Map<String, Class<?>> typeAliases
   protected final TypeAliasRegistry typeAliasRegistry = new TypeAliasRegistry();
+
+  //
   protected final LanguageDriverRegistry languageRegistry = new LanguageDriverRegistry();
 
   protected final Map<String, MappedStatement> mappedStatements = new StrictMap<MappedStatement>("Mapped Statements collection")
